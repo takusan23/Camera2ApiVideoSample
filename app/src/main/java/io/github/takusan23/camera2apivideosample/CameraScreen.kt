@@ -33,12 +33,14 @@ fun CameraScreen() {
     val isPortrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
     val cameraController = remember { CameraController(context) }
 
+    // 権限
     val isGrantedPermission = remember { mutableStateOf(CameraController.checkPermission(context)) }
     val permissionRequester = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
         onResult = { isGrantedPermission.value = it.all { (_, isGranted) -> isGranted } }
     )
 
+    // カメラの用意
     DisposableEffect(key1 = Unit) {
         scope.launch {
             // 権限がなければ貰う

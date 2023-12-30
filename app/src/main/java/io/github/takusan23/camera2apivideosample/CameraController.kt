@@ -60,7 +60,7 @@ class CameraController(
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setVideoSource(MediaRecorder.VideoSource.SURFACE)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+            setVideoEncoder(MediaRecorder.VideoEncoder.AV1) // AV1
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             setAudioChannels(2)
             setVideoEncodingBitRate(3_000_000) // ニコ動が H.264 AVC で 6M なので、AV1 なら半分でも同等の画質を期待して
