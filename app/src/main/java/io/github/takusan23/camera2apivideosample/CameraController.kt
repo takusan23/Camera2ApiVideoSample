@@ -11,39 +11,37 @@ import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
-import android.media.MediaRecorder
 import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Range
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
-import androidx.core.content.contentValuesOf
+import io.github.takusan23.camera2apivideosample.recorder.CameraRecordInterface
+import io.github.takusan23.camera2apivideosample.recorder.CameraRecordMediaCodec
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import java.io.File
 import java.util.concurrent.Executors
 import kotlin.coroutines.resume
 
 @SuppressLint("NewApi") // Android Pie 以降、以前では camera2 API を直す必要があります
 class CameraController(
-    private val context: Context,
+    private val context: Context
 ) {
 
     private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     private val cameraExecutor = Executors.newSingleThreadExecutor()
 
     private var cameraDevice: CameraDevice? = null
-    private var mediaRecorder: MediaRecorder? = null
-    private var recordingFile: File? = null
 
-    var isRecording = false
-        private set
+    // MediaRecorder / MediaCodec どっちかでエンコードする
+    private var cameraRecorder: CameraRecordInterface? = null
 
     val previewSurfaceView = SurfaceView(context)
+
+    val isRecording: Boolean
+        get() = cameraRecorder?.isRecording ?: false
 
     private val isLandscape: Boolean
         get() = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -57,89 +55,62 @@ class CameraController(
 
     suspend fun startRecord() {
         // 録画するやつを用意
-        this@CameraController.mediaRecorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else MediaRecorder()).apply {
-            // 呼び出し順があるので注意
-            setAudioSource(MediaRecorder.AudioSource.MIC)
-            setVideoSource(MediaRecorder.VideoSource.SURFACE)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setVideoEncoder(MediaRecorder.VideoEncoder.AV1) // AV1
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setAudioChannels(2)
-            setVideoEncodingBitRate(3_000_000) // ニコ動が H.264 AVC で 6M なので、AV1 なら半分でも同等の画質を期待して
-            setVideoFrameRate(60)
-            // 解像度、縦動画の場合は、代わりに回転情報を付与する（縦横の解像度はそのまま）
-            setVideoSize(CAMERA_RESOLUTION_WIDTH, CAMERA_RESOLUTION_HEIGHT)
-            setOrientationHint(if (isLandscape) 0 else 90)
-            setAudioEncodingBitRate(192_000)
-            setAudioSamplingRate(44_100)
-            // 保存先
-            // 動画フォルダに保存する処理が追加で必要
-            recordingFile = context.getExternalFilesDir(null)?.resolve("Camera2ApiVideoSample_${System.currentTimeMillis()}.mp4")
-            setOutputFile(recordingFile)
-            prepare()
-        }
-        val mediaRecorder = mediaRecorder!!
+        cameraRecorder = CameraRecordMediaCodec(context)
+        cameraRecorder?.prepareRecorder(
+            codec = CameraRecordInterface.Codec.AVC,
+            videoWidth = CAMERA_RESOLUTION_WIDTH,
+            videoHeight = CAMERA_RESOLUTION_HEIGHT,
+            videoFps = 30,
+            videoBitrate = 1_000_000,
+            videoKeyFrameInterval = 1,
+            audioChannelCount = 2,
+            audioSamplingRate = 44_100,
+            audioBitrate = 192_000
+        )
 
         // 録画モードでキャプチャーセッションを開く
         val previewSurface = awaitSurface()
         val cameraDevice = cameraDevice!!
         val captureRequest = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
             addTarget(previewSurface)
-            addTarget(mediaRecorder.surface)
+            addTarget(cameraRecorder!!.surface)
             set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(30, 60))
         }.build()
         val outputList = listOf(
             OutputConfiguration(previewSurface),
-            OutputConfiguration(mediaRecorder.surface)
+            OutputConfiguration(cameraRecorder!!.surface)
         )
         // 変な解像度を入れるとここでエラーなります
-        SessionConfiguration(SessionConfiguration.SESSION_REGULAR, outputList, cameraExecutor, object : CameraCaptureSession.StateCallback() {
-            override fun onConfigured(session: CameraCaptureSession) {
-                // 録画開始
-                if (!isRecording) {
-                    isRecording = true
-                    mediaRecorder.start()
+        // コールバックを suspendCoroutine にする
+        val captureSession = suspendCancellableCoroutine { continuation ->
+            SessionConfiguration(SessionConfiguration.SESSION_REGULAR, outputList, cameraExecutor, object : CameraCaptureSession.StateCallback() {
+                override fun onConfigured(session: CameraCaptureSession) {
+                    continuation.resume(session)
                 }
-                session.setRepeatingRequest(captureRequest, null, null)
-            }
 
-            override fun onConfigureFailed(session: CameraCaptureSession) {
-                // do nothing
-            }
-        }).also { sessionConfiguration -> cameraDevice.createCaptureSession(sessionConfiguration) }
+                override fun onConfigureFailed(session: CameraCaptureSession) {
+                    // do nothing
+                }
+            }).also { sessionConfiguration -> cameraDevice.createCaptureSession(sessionConfiguration) }
+        }
+        // カメラ映像を流し始める
+        captureSession.setRepeatingRequest(captureRequest, null, null)
+        // 録画開始
+        if (!isRecording) {
+            cameraRecorder?.startRecorder()
+        }
     }
 
 
-    suspend fun stopRecord() = withContext(Dispatchers.IO) {
+    suspend fun stopRecord() = withContext(Dispatchers.Default) {
         // プレビューに戻す
-        isRecording = false
+        cameraRecorder?.stopRecorder()
+        cameraRecorder = null
         startPreview()
-
-        // 録画停止
-        mediaRecorder?.stop()
-        mediaRecorder?.release()
-        mediaRecorder = null
-
-        // 端末の動画フォルダに移動
-        recordingFile?.also { recordingFile ->
-            val contentValues = contentValuesOf(
-                MediaStore.MediaColumns.DISPLAY_NAME to recordingFile.name,
-                MediaStore.MediaColumns.RELATIVE_PATH to "${Environment.DIRECTORY_MOVIES}/Camera2ApiVideoSample",
-                MediaStore.MediaColumns.MIME_TYPE to "video/mp4"
-            )
-            val uri = context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)!!
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                recordingFile.inputStream().use { inputStream ->
-                    inputStream.copyTo(outputStream)
-                }
-            }
-            recordingFile.delete()
-        }
     }
 
     fun destroy() {
         cameraDevice?.close()
-        mediaRecorder?.release()
     }
 
     /** プレビューを開始する */
@@ -211,10 +182,10 @@ class CameraController(
     companion object {
 
         /** 1080p 解像度 幅 */
-        private const val CAMERA_RESOLUTION_WIDTH = 1920
+        private const val CAMERA_RESOLUTION_WIDTH = 1280
 
         /** 1080p 解像度 高さ */
-        private const val CAMERA_RESOLUTION_HEIGHT = 1080
+        private const val CAMERA_RESOLUTION_HEIGHT = 720
 
         /** 必要な権限 */
         val PERMISSION_LIST = listOf(android.Manifest.permission.RECORD_AUDIO, android.Manifest.permission.CAMERA)
