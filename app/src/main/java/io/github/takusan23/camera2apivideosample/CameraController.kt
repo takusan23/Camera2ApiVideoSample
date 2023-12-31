@@ -8,12 +8,14 @@ import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
 import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.params.OutputConfiguration
 import android.hardware.camera2.params.SessionConfiguration
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import android.util.Range
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import androidx.annotation.RequiresApi
@@ -64,7 +66,7 @@ class CameraController(
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
             setAudioChannels(2)
             setVideoEncodingBitRate(3_000_000) // ニコ動が H.264 AVC で 6M なので、AV1 なら半分でも同等の画質を期待して
-            setVideoFrameRate(30)
+            setVideoFrameRate(60)
             // 解像度、縦動画の場合は、代わりに回転情報を付与する（縦横の解像度はそのまま）
             setVideoSize(CAMERA_RESOLUTION_WIDTH, CAMERA_RESOLUTION_HEIGHT)
             setOrientationHint(if (isLandscape) 0 else 90)
@@ -84,6 +86,7 @@ class CameraController(
         val captureRequest = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD).apply {
             addTarget(previewSurface)
             addTarget(mediaRecorder.surface)
+            set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(30, 60))
         }.build()
         val outputList = listOf(
             OutputConfiguration(previewSurface),
@@ -207,11 +210,11 @@ class CameraController(
 
     companion object {
 
-        /** 720P 解像度 幅 */
-        private const val CAMERA_RESOLUTION_WIDTH = 1280
+        /** 1080p 解像度 幅 */
+        private const val CAMERA_RESOLUTION_WIDTH = 1920
 
-        /** 720P 解像度 高さ */
-        private const val CAMERA_RESOLUTION_HEIGHT = 720
+        /** 1080p 解像度 高さ */
+        private const val CAMERA_RESOLUTION_HEIGHT = 1080
 
         /** 必要な権限 */
         val PERMISSION_LIST = listOf(android.Manifest.permission.RECORD_AUDIO, android.Manifest.permission.CAMERA)
