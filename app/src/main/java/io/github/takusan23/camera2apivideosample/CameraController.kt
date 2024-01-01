@@ -43,8 +43,8 @@ class CameraController(
     val isRecording: Boolean
         get() = cameraRecorder?.isRecording ?: false
 
-    private val isLandscape: Boolean
-        get() = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    private val isPortrait: Boolean
+        get() = context.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
     suspend fun setupCamera() {
         // カメラを開く
@@ -62,11 +62,13 @@ class CameraController(
             videoWidth = CAMERA_RESOLUTION_WIDTH,
             videoHeight = CAMERA_RESOLUTION_HEIGHT,
             videoFps = 30,
-            videoBitrate = 1_000_000,
+            videoBitrate = 3_000_000,
             videoKeyFrameInterval = 1,
             audioChannelCount = 2,
             audioSamplingRate = 44_100,
-            audioBitrate = 192_000
+            audioBitrate = 192_000,
+            isPortrait = isPortrait,
+            isForceSoftwareEncode = false // ハードウェアエンコードじゃないと現実的じゃないです
         )
 
         // 録画モードでキャプチャーセッションを開く
