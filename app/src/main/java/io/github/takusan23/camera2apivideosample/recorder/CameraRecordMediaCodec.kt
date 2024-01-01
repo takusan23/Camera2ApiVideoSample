@@ -130,7 +130,6 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
                                     }
                                 },
                                 onOutputFormatAvailable = { mediaFormat ->
-                                    println("onOutputFormatAvailable = $mediaFormat")
                                     videoIndex = mediaMuxer.addTrack(mediaFormat)
                                     startMediaMuxer()
                                 }
