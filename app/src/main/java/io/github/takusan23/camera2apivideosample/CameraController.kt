@@ -53,25 +53,32 @@ class CameraController(
         startPreview()
     }
 
-    suspend fun startRecord() {
+    suspend fun startRecord(
+        codec: CameraRecordInterface.Codec,
+        videoWidth: Int,
+        videoHeight: Int,
+        videoFps: Int,
+        videoBitrate: Int,
+        isForceSoftwareEncode: Boolean
+    ) {
         // 録画するやつを用意
         // MediaCodec か MediaRecorder を使ってください。
         // 両方の実装例がこのプロジェクトにあります。
         // cameraRecorder = CameraRecordMediaRecorder(context)
         cameraRecorder = CameraRecordMediaCodec(context)
         cameraRecorder?.prepareRecorder(
-            codec = CameraRecordInterface.Codec.AV1,
-            fileName = "Camera2ApiVideoSample_${System.currentTimeMillis()}.mp4",
-            videoWidth = CAMERA_RESOLUTION_WIDTH,
-            videoHeight = CAMERA_RESOLUTION_HEIGHT,
-            videoFps = 30,
-            videoBitrate = 3_000_000,
+            codec = codec,
+            fileName = "Camera2ApiVideoSample_${codec}_${videoHeight}p_${isForceSoftwareEncode}_${System.currentTimeMillis()}.mp4",
+            videoWidth = videoWidth,
+            videoHeight = videoHeight,
+            videoFps = videoFps,
+            videoBitrate = videoBitrate,
             videoKeyFrameInterval = 1,
             audioChannelCount = 2,
             audioSamplingRate = 44_100,
             audioBitrate = 192_000,
             isPortrait = isPortrait,
-            isForceSoftwareEncode = false // ハードウェアエンコードじゃないと現実的じゃないです
+            isForceSoftwareEncode = isForceSoftwareEncode
         )
 
         // 録画モードでキャプチャーセッションを開く
@@ -186,12 +193,6 @@ class CameraController(
     }
 
     companion object {
-
-        /** 1080p 解像度 幅 */
-        private const val CAMERA_RESOLUTION_WIDTH = 1280
-
-        /** 1080p 解像度 高さ */
-        private const val CAMERA_RESOLUTION_HEIGHT = 720
 
         /** 必要な権限 */
         val PERMISSION_LIST = listOf(android.Manifest.permission.RECORD_AUDIO, android.Manifest.permission.CAMERA)
