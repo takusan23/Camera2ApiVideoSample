@@ -18,7 +18,9 @@ interface CameraRecordInterface {
         videoKeyFrameInterval: Int,
         audioChannelCount: Int,
         audioSamplingRate: Int,
-        audioBitrate: Int
+        audioBitrate: Int,
+        isPortrait: Boolean,
+        isForceSoftwareEncode: Boolean // MediaCodec Only
     )
 
     /** エンコーダーを起動します */

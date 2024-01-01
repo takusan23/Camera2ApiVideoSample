@@ -49,7 +49,9 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
         videoKeyFrameInterval: Int,
         audioChannelCount: Int,
         audioSamplingRate: Int,
-        audioBitrate: Int
+        audioBitrate: Int,
+        isPortrait: Boolean,
+        isForceSoftwareEncode: Boolean
     ) {
         // 音声エンコーダーの初期化
         prepareAudioEncoder(
@@ -60,17 +62,16 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
         // 映像エンコーダーの初期化
         prepareVideoEncoder(
             codec = codec,
-            // 解像度は縦長の動画は作れない？
-            // 代わりに回転情報を付与する
             videoWidth = videoWidth,
             videoHeight = videoHeight,
             videoFps = videoFps,
             videoBitrate = videoBitrate,
-            videoKeyFrameInterval = videoKeyFrameInterval
+            videoKeyFrameInterval = videoKeyFrameInterval,
+            isForceSoftwareEncode = isForceSoftwareEncode
         )
         // マルチプレクサの初期化
         prepareMuxer(
-            isPortlate = videoWidth < videoHeight,
+            isPortlate = isPortrait,
             fileName = fileName
         )
     }
@@ -189,7 +190,8 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
         videoHeight: Int,
         videoFps: Int,
         videoBitrate: Int,
-        videoKeyFrameInterval: Int
+        videoKeyFrameInterval: Int,
+        isForceSoftwareEncode: Boolean
     ) {
         // 映像エンコーダーの初期化
         val codecName = when (codec) {
@@ -204,7 +206,8 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
             bitRate = videoBitrate,
             frameRate = videoFps,
             iFrameInterval = videoKeyFrameInterval,
-            codecName = codecName
+            codecName = codecName,
+            isForceSoftwareEncode
         )
     }
 
@@ -230,6 +233,10 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
 
         // 音声エンコーダーの初期化
         audioEncoder = AudioEncoder()
-        audioEncoder?.prepareEncoder(sampleRate = audioSamplingRate, channelCount = audioChannelCount, bitRate = audioBitrate)
+        audioEncoder?.prepareEncoder(
+            sampleRate = audioSamplingRate,
+            channelCount = audioChannelCount,
+            bitRate = audioBitrate
+        )
     }
 }

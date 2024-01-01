@@ -34,7 +34,9 @@ class CameraRecordMediaRecorder(
         videoKeyFrameInterval: Int,
         audioChannelCount: Int,
         audioSamplingRate: Int,
-        audioBitrate: Int
+        audioBitrate: Int,
+        isPortrait: Boolean,
+        isForceSoftwareEncode: Boolean
     ) {
         mediaRecorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(context) else MediaRecorder()).apply {
             // 呼び出し順があるので注意
@@ -53,9 +55,8 @@ class CameraRecordMediaRecorder(
             setVideoEncodingBitRate(videoBitrate) // ニコ動が H.264 AVC で 6M なので、AV1 なら半分でも同等の画質を期待して
             setVideoFrameRate(videoFps)
             // 解像度、縦動画の場合は、代わりに回転情報を付与する（縦横の解像度はそのまま）
-            val isPortlate = videoWidth < videoHeight
             setVideoSize(videoWidth, videoHeight)
-            setOrientationHint(if (isPortlate) 90 else 0)
+            setOrientationHint(if (isPortrait) 90 else 0)
             setAudioEncodingBitRate(audioBitrate)
             setAudioSamplingRate(audioSamplingRate)
             // 保存先

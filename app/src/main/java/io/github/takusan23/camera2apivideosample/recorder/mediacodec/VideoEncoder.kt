@@ -2,6 +2,7 @@ package io.github.takusan23.camera2apivideosample.recorder.mediacodec
 
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
+import android.media.MediaCodecList
 import android.media.MediaFormat
 import android.view.Surface
 import kotlinx.coroutines.Dispatchers
@@ -27,6 +28,7 @@ class VideoEncoder {
      * @param frameRate フレームレート
      * @param iFrameInterval キーフレーム生成間隔
      * @param codecName [MediaFormat.MIMETYPE_VIDEO_VP9]や[MediaFormat.MIMETYPE_VIDEO_AVC]など
+     * @param isForceSoftwareEncode ソフトウェアエンコーダーを利用するか（非推奨、ハードウェアを優先すべきです）
      */
     fun prepareEncoder(
         videoWidth: Int,
@@ -35,6 +37,7 @@ class VideoEncoder {
         frameRate: Int,
         iFrameInterval: Int = 1,
         codecName: String,
+        isForceSoftwareEncode: Boolean
     ) {
         val videoEncodeFormat = MediaFormat.createVideoFormat(codecName, videoWidth, videoHeight).apply {
             setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
@@ -43,7 +46,18 @@ class VideoEncoder {
             setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
         }
         // エンコーダー用意
-        mediaCodec = MediaCodec.createEncoderByType(codecName).apply {
+        mediaCodec = if (isForceSoftwareEncode) {
+            // もしソフトウェアエンコーダーの場合は名前を探す
+            val softwareCodecName = MediaCodecList(MediaCodecList.ALL_CODECS)
+                .codecInfos
+                .filter { it.isEncoder && it.isSoftwareOnly }
+                .first { codecInfo -> codecInfo.supportedTypes.any { type -> type.equals(codecName, ignoreCase = true) } }
+                .name
+            MediaCodec.createByCodecName(softwareCodecName)
+        } else {
+            // 特段していなければハードウェアが優先される
+            MediaCodec.createEncoderByType(codecName)
+        }.apply {
             configure(videoEncodeFormat, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
         }
         inputSurface = mediaCodec!!.createInputSurface()
