@@ -57,7 +57,8 @@ class CameraController(
         // 録画するやつを用意
         cameraRecorder = CameraRecordMediaCodec(context)
         cameraRecorder?.prepareRecorder(
-            codec = CameraRecordInterface.Codec.AVC,
+            codec = CameraRecordInterface.Codec.AV1,
+            fileName = "Camera2ApiVideoSample_${System.currentTimeMillis()}.mp4",
             videoWidth = CAMERA_RESOLUTION_WIDTH,
             videoHeight = CAMERA_RESOLUTION_HEIGHT,
             videoFps = 30,

@@ -10,6 +10,7 @@ interface CameraRecordInterface {
 
     suspend fun prepareRecorder(
         codec: Codec,
+        fileName: String,
         videoWidth: Int,
         videoHeight: Int,
         videoFps: Int,

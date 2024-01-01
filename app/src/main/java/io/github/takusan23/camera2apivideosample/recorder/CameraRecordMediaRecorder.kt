@@ -26,6 +26,7 @@ class CameraRecordMediaRecorder(
 
     override suspend fun prepareRecorder(
         codec: CameraRecordInterface.Codec,
+        fileName: String,
         videoWidth: Int,
         videoHeight: Int,
         videoFps: Int,
@@ -59,7 +60,7 @@ class CameraRecordMediaRecorder(
             setAudioSamplingRate(audioSamplingRate)
             // 保存先
             // 動画フォルダに保存する処理が追加で必要
-            recordingFile = context.getExternalFilesDir(null)?.resolve("Camera2ApiVideoSample_${System.currentTimeMillis()}.mp4")
+            recordingFile = context.getExternalFilesDir(null)?.resolve(fileName)
             setOutputFile(recordingFile!!.path)
             prepare()
         }

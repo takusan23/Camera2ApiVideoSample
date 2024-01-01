@@ -41,6 +41,7 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
 
     override suspend fun prepareRecorder(
         codec: CameraRecordInterface.Codec,
+        fileName: String,
         videoWidth: Int,
         videoHeight: Int,
         videoFps: Int,
@@ -69,7 +70,8 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
         )
         // マルチプレクサの初期化
         prepareMuxer(
-            isPortlate = videoWidth < videoHeight
+            isPortlate = videoWidth < videoHeight,
+            fileName = fileName
         )
     }
 
@@ -175,8 +177,8 @@ class CameraRecordMediaCodec(private val context: Context) : CameraRecordInterfa
         }
     }
 
-    private fun prepareMuxer(isPortlate: Boolean) {
-        recordingFile = context.getExternalFilesDir(null)?.resolve("Camera2ApiVideoSample_${System.currentTimeMillis()}.mp4")
+    private fun prepareMuxer(isPortlate: Boolean, fileName: String) {
+        recordingFile = context.getExternalFilesDir(null)?.resolve(fileName)
         mediaMuxer = MediaMuxer(recordingFile!!.path, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
         mediaMuxer?.setOrientationHint(if (isPortlate) 90 else 0)
     }
