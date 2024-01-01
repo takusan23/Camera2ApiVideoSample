@@ -55,6 +55,9 @@ class CameraController(
 
     suspend fun startRecord() {
         // 録画するやつを用意
+        // MediaCodec か MediaRecorder を使ってください。
+        // 両方の実装例がこのプロジェクトにあります。
+        // cameraRecorder = CameraRecordMediaRecorder(context)
         cameraRecorder = CameraRecordMediaCodec(context)
         cameraRecorder?.prepareRecorder(
             codec = CameraRecordInterface.Codec.AV1,
