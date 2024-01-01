@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -23,9 +25,12 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import io.github.takusan23.camera2apivideosample.ui.component.RecorderSettingData
+import io.github.takusan23.camera2apivideosample.ui.component.RecordingSettingScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CameraScreen() {
     val scope = rememberCoroutineScope()
@@ -57,6 +62,18 @@ fun CameraScreen() {
         onDispose { cameraController.destroy() }
     }
 
+    // 設定ボトムシート
+    val isSettingOpen = remember { mutableStateOf(false) }
+    val settingData = remember { mutableStateOf(RecorderSettingData()) }
+    if (isSettingOpen.value) {
+        ModalBottomSheet(onDismissRequest = { isSettingOpen.value = false }) {
+            RecordingSettingScreen(
+                settingData = settingData.value,
+                onUpdateSetting = { settingData.value = it }
+            )
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
 
         AndroidView(
@@ -85,7 +102,15 @@ fun CameraScreen() {
             onClick = {
                 scope.launch {
                     if (!cameraController.isRecording) {
-                        cameraController.startRecord()
+                        // 設定を渡す
+                        cameraController.startRecord(
+                            codec = settingData.value.codec,
+                            videoWidth = settingData.value.width,
+                            videoHeight = settingData.value.height,
+                            videoFps = settingData.value.frameRate,
+                            videoBitrate = settingData.value.bitRate,
+                            isForceSoftwareEncode = settingData.value.isForceSoftwareEncoder
+                        )
                     } else {
                         cameraController.stopRecord()
                     }
@@ -93,6 +118,15 @@ fun CameraScreen() {
             }
         ) {
             Text("録画開始・終了")
+        }
+
+        Button(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = 50.dp),
+            onClick = { isSettingOpen.value = true }
+        ) {
+            Text(text = "設定")
         }
 
     }
